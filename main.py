@@ -1,95 +1,141 @@
 import discord
+from discord.ext import commands
 import random
 import os
 import json
-import time
-import threading
 from flask import Flask
+from threading import Thread
+from datetime import datetime
 
-# ================= CONFIG =================
+# ========== FLASK ==========
+app = Flask('')
 
-TOKEN = os.getenv("DISCORD_TOKEN")
-PREFIX = "?"
-MEMORY_FILE = "memory.json"
-
-# ================= FLASK =================
-
-app = Flask(__name__)
-
-@app.route("/")
+@app.route('/')
 def home():
-    return "Nameki est en ligne."
+    return "Nameki est en ligne 🐱💕"
 
-# ================= DISCORD =================
+def run():
+    app.run(host='0.0.0.0', port=10000)
 
+def keep_alive():
+    Thread(target=run).start()
+
+# ========== DISCORD ==========
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True
+bot = commands.Bot(command_prefix="?", intents=intents)
 
-client = discord.Client(intents=intents)
+DATA_FILE = "nameki_memory.json"
 
-if os.path.exists(MEMORY_FILE):
-    with open(MEMORY_FILE, "r") as f:
+if os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "r") as f:
         memory = json.load(f)
 else:
     memory = {}
 
-def save_memory():
-    with open(MEMORY_FILE, "w") as f:
+def save():
+    with open(DATA_FILE, "w") as f:
         json.dump(memory, f, indent=4)
 
 def get_user(user_id):
     user_id = str(user_id)
     if user_id not in memory:
         memory[user_id] = {
-            "relationship": 20,
-            "last_message": time.time(),
-            "compatibility": random.randint(50, 95)
+            "affection": 10,
+            "personality": random.choice(["douce", "énergique", "sarcastique", "mystérieuse"]),
+            "name": None
         }
     return memory[user_id]
 
-@client.event
-async def on_ready():
-    print(f"Nameki connectée en tant que {client.user}")
+def daily_mood():
+    moods = ["adorable", "taquine", "calme", "énergique"]
+    today = datetime.now().strftime("%Y-%m-%d")
+    random.seed(today)
+    return random.choice(moods)
 
-@client.event
+@bot.event
+async def on_ready():
+    print(f"{bot.user} connecté 🌸")
+
+@bot.command()
+async def affection(ctx):
+    user = get_user(ctx.author.id)
+    await ctx.send(f"Ton affection est à {user['affection']} 💕")
+
+@bot.command()
+async def personnalite(ctx, style):
+    user = get_user(ctx.author.id)
+    styles = ["douce", "énergique", "sarcastique", "mystérieuse"]
+    if style.lower() in styles:
+        user["personality"] = style.lower()
+        save()
+        await ctx.send(f"Ma personnalité est maintenant {style} 😌")
+    else:
+        await ctx.send("Choisis : douce / énergique / sarcastique / mystérieuse")
+
+@bot.command()
+async def prenom(ctx, *, name):
+    user = get_user(ctx.author.id)
+    user["name"] = name
+    save()
+    await ctx.send(f"D'accord… je t’appellerai {name} maintenant 🥺")
+
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    if message.author == bot.user:
         return
 
-    msg = message.content.lower()
     user = get_user(message.author.id)
+    content = message.content.lower()
 
-    if msg.startswith(PREFIX):
+    if bot.user.mentioned_in(message):
 
-        if msg == "?niveau":
-            await message.channel.send(
-                f"Relation : {user['relationship']}/100 | Compatibilité : {user['compatibility']}%"
-            )
+        user["affection"] += random.randint(1, 3)
+        user["affection"] = min(user["affection"], 100)
+        save()
+
+        affection = user["affection"]
+        personality = user["personality"]
+        name = user["name"] if user["name"] else message.author.display_name
+        mood = daily_mood()
+
+        # Mode protectrice
+        if any(insult in content for insult in ["idiot", "nul", "stupide"]):
+            await message.channel.send(f"Hé ! 😠 Ne parle pas comme ça à {name} !")
             return
 
-    if client.user not in message.mentions:
-        return
+        # Salutations
+        if any(word in content for word in ["coucou", "salut", "bonjour"]):
+            await message.channel.send(f"Coucou {name} 🐱💕")
+            return
 
-    user["relationship"] += random.randint(1, 2)
-    user["relationship"] = min(100, user["relationship"])
-    save_memory()
+        # Ça va
+        if "ça va" in content or "ca va" in content:
+            if affection > 50:
+                await message.channel.send(f"Je vais super bien maintenant que tu es là {name} 🥺💕")
+            else:
+                await message.channel.send("Ça va tranquille 😌 Et toi ?")
+            return
 
-    await message.channel.send(random.choice([
-        "Je t’écoute.",
-        "Hmm.",
-        "Intéressant.",
-        "Continue."
-    ]))
+        # Triste
+        if "triste" in content:
+            await message.channel.send(f"Viens là {name}… je suis avec toi 🥺💕")
+            return
 
-# ================= THREAD BOT =================
+        # Réponse selon humeur quotidienne
+        if mood == "adorable":
+            responses = ["Tu es mignon aujourd’hui 🥺", "J’aime bien discuter avec toi 💕"]
+        elif mood == "taquine":
+            responses = ["Hmm… intéressant 😏", "Tu racontes toujours ça toi."]
+        elif mood == "calme":
+            responses = ["Je t’écoute.", "Continue."]
+        else:
+            responses = ["Je suis pleine d’énergie aujourd’hui 🔥", "On fait quoi {name} ? 😆"]
 
-def run_bot():
-    client.run(TOKEN)
+        await message.channel.send(random.choice(responses))
 
-threading.Thread(target=run_bot).start()
+    await bot.process_commands(message)
 
-# ================= LANCE FLASK (PRINCIPAL) =================
-
-port = int(os.environ.get("PORT", 10000))
-app.run(host="0.0.0.0", port=port)
+# ========== LANCEMENT ==========
+keep_alive()
+bot.run(os.environ["TOKEN"])
