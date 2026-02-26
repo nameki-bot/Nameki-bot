@@ -12,13 +12,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 PREFIX = "?"
 MEMORY_FILE = "memory.json"
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-
-client = discord.Client(intents=intents)
-
-# ================= FLASK (OBLIGATOIRE POUR RENDER FREE) =================
+# ================= FLASK =================
 
 app = Flask(__name__)
 
@@ -26,13 +20,13 @@ app = Flask(__name__)
 def home():
     return "Nameki est en ligne."
 
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+# ================= DISCORD =================
 
-threading.Thread(target=run_web).start()
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
 
-# ================= MEMORY =================
+client = discord.Client(intents=intents)
 
 if os.path.exists(MEMORY_FILE):
     with open(MEMORY_FILE, "r") as f:
@@ -54,13 +48,9 @@ def get_user(user_id):
         }
     return memory[user_id]
 
-# ================= READY =================
-
 @client.event
 async def on_ready():
     print(f"Nameki connectée en tant que {client.user}")
-
-# ================= MESSAGE =================
 
 @client.event
 async def on_message(message):
@@ -70,7 +60,6 @@ async def on_message(message):
     msg = message.content.lower()
     user = get_user(message.author.id)
 
-    # ---------- COMMANDES ----------
     if msg.startswith(PREFIX):
 
         if msg == "?niveau":
@@ -79,31 +68,28 @@ async def on_message(message):
             )
             return
 
-        if msg.startswith("?surnom"):
-            nickname = msg.replace("?surnom", "").strip()
-            if nickname:
-                await message.channel.send(f"D’accord. Je t’appellerai {nickname}.")
-            return
-
-    # ---------- Répond SEULEMENT si ping ----------
     if client.user not in message.mentions:
         return
 
     user["relationship"] += random.randint(1, 2)
     user["relationship"] = min(100, user["relationship"])
-    user["last_message"] = time.time()
     save_memory()
 
-    responses = [
+    await message.channel.send(random.choice([
         "Je t’écoute.",
         "Hmm.",
         "Intéressant.",
-        "Continue.",
-        "Je vois."
-    ]
+        "Continue."
+    ]))
 
-    await message.channel.send(random.choice(responses))
+# ================= THREAD BOT =================
 
-# ================= RUN =================
+def run_bot():
+    client.run(TOKEN)
 
-client.run(TOKEN)
+threading.Thread(target=run_bot).start()
+
+# ================= LANCE FLASK (PRINCIPAL) =================
+
+port = int(os.environ.get("PORT", 10000))
+app.run(host="0.0.0.0", port=port)
