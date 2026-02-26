@@ -3,6 +3,8 @@ import random
 import os
 import json
 import time
+import threading
+from flask import Flask
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -155,12 +157,7 @@ async def on_message(message):
 
     await message.channel.send(reply)
 
-# ---------------- RUN ----------------
-
-client.run(os.getenv("DISCORD_TOKEN"))
-import threading
-from flask import Flask
-import os
+# ---------------- FLASK KEEP ALIVE ----------------
 
 app = Flask(__name__)
 
@@ -176,5 +173,7 @@ def keep_alive():
     t.start()
 
 keep_alive()
+
+# ---------------- RUN ----------------
 
 client.run(os.getenv("DISCORD_TOKEN"))
