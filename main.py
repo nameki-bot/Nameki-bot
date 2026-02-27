@@ -1,59 +1,36 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import random
-import time
+import asyncio
 import json
 import os
-import asyncio
-from flask import Flask
-from threading import Thread
 
 TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
+
 bot = commands.Bot(command_prefix="?", intents=intents)
 
-# ================= WEB SERVER (ANTI-SLEEP) =================
+DATA_FILE = "data.json"
 
-app = Flask(__name__)
+# -------------------- SAUVEGARDE --------------------
 
-@app.route("/")
-def home():
-    return "Nameki is alive 💚"
-
-def run_web():
-    app.run(host="0.0.0.0", port=10000)
-
-Thread(target=run_web).start()
-
-# ================= MEMORY =================
-
-MEMORY_FILE = "memory.json"
-
-if os.path.exists(MEMORY_FILE):
-    with open(MEMORY_FILE, "r") as f:
-        data = json.load(f)
-else:
-    data = {
-        "humeurs_users": {},
-        "affinite": {},
-        "last_change": time.time()
-    }
-
-humeurs_users = data.get("humeurs_users", {})
-affinite = data.get("affinite", {})
-last_change = data.get("last_change", time.time())
+def load():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return {"affinite": {}, "humeurs": {}}
 
 def save():
-    with open(MEMORY_FILE, "w") as f:
-        json.dump({
-            "humeurs_users": humeurs_users,
-            "affinite": affinite,
-            "last_change": last_change
-        }, f)
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
 
-# ================= 20 HUMEURS =================
+data = load()
+affinite = data["affinite"]
+humeurs_users = data["humeurs"]
+
+# -------------------- HUMEURS --------------------
 
 humeurs = {
 1:{"status":"💗 Amoureuse","phrases":["Tu es à moi 💞","Je t'adore tellement.","Reste encore un peu...","Je souris quand tu parles.","Tu me fais fondre.","Je veux rester avec toi."]},
@@ -78,54 +55,32 @@ humeurs = {
 20:{"status":"🧘 Calme","phrases":["Respire.","Tout va bien.","Je suis sereine.","On garde le calme.","Restons tranquilles."]}
 }
 
-# ================= SMART RESPONSE =================
+INSULTES = ["tg", "ta gueule", "fdp", "connard", "pute"]
 
-def smart_response(content, humeur_id):
+# -------------------- SMART RESPONSE --------------------
 
+def smart_response(content, humeur):
     content = content.lower()
 
-    saluts = ["coucou","cc","salut","bonjour","bonsoir","hey","yo"]
-    cava = ["ça va","ca va","cv","tu vas bien","comment tu vas"]
-    quoi = ["tu fais quoi","tu fais","quoi de neuf"]
+    if any(i in content for i in INSULTES):
+        return None
 
-    if any(w in content for w in saluts):
-        return random.choice(["Coucou 💚","Salut.","Hey toi.","Bonjour~"])
+    if "salut" in content or "coucou" in content or "bonjour" in content:
+        return random.choice(["Coucou 💕","Salut toi.","Hey~"])
 
-    if any(w in content for w in cava):
-        return random.choice(humeurs[humeur_id]["phrases"]) + " Et toi ?"
-
-    if any(w in content for w in quoi):
-        return random.choice([
-            "Je réfléchis un peu.",
-            "Je t’observe.",
-            "Je change d’humeur peut-être.",
-            "Je traîne ici.",
-            "Je regarde les messages."
-        ]) + " Et toi ?"
+    if "ça va" in content:
+        return random.choice(["Ça va et toi ?","Je vais bien.","Bof aujourd’hui."])
 
     return None
 
-# ================= MOOD LOOP =================
-
-@tasks.loop(minutes=5)
-async def mood_loop():
-    global last_change
-    if time.time() - last_change >= 7200:
-        for user in humeurs_users:
-            humeurs_users[user] = random.randint(1,20)
-        last_change = time.time()
-        save()
+# -------------------- EVENTS --------------------
 
 @bot.event
 async def on_ready():
-    mood_loop.start()
-    print("Nameki prête 💚")
-
-# ================= MESSAGE EVENT =================
+    print(f"Connecté en tant que {bot.user}")
 
 @bot.event
 async def on_message(message):
-
     if message.author.bot:
         return
 
@@ -133,26 +88,19 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
-    content = message.content.lower()
     user_id = str(message.author.id)
-
-    insultes = ["con","connasse","salope","tg","ferme ta gueule","idiot","débile"]
-
-    if any(i in content for i in insultes):
-        affinite[user_id] = affinite.get(user_id,0) - 2
-        save()
-        return
+    content = message.content.replace(f"<@{bot.user.id}>", "").strip()
 
     if user_id not in affinite:
         affinite[user_id] = 0
 
     if user_id not in humeurs_users:
-        humeurs_users[user_id] = random.randint(1,20)
+        humeurs_users[user_id] = random.randint(1, 20)
 
     humeur = humeurs_users[user_id]
 
     if affinite[user_id] > 5:
-        humeur = random.choice([1,3,17,19])
+        humeur = random.choice([1,17,19])
     elif affinite[user_id] < -3:
         humeur = random.choice([8,12,15,18])
 
@@ -160,17 +108,21 @@ async def on_message(message):
         return
 
     async with message.channel.typing():
-        await asyncio.sleep(random.uniform(2,4))
+        await asyncio.sleep(random.uniform(1.5, 3))
 
     reply = smart_response(content, humeur)
 
     if not reply:
-        reply = random.choice(humeurs[humeur]["phrases"]) + " Et toi ?"
+        reply = random.choice(humeurs[humeur]["phrases"])
 
     affinite[user_id] += 1
     save()
 
-    await message.reply(reply, mention_author=True)
+    await message.channel.send(
+        f"{message.author.mention} {reply}",
+        allowed_mentions=discord.AllowedMentions(users=True)
+    )
+
     await bot.process_commands(message)
 
 bot.run(TOKEN)
