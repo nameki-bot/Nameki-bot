@@ -127,5 +127,5 @@ async def on_message(message):
         allowed_mentions=discord.AllowedMentions(users=True)
     )
 
-keep_alive()
+
 bot.run(TOKEN)
