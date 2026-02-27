@@ -213,6 +213,7 @@ async def on_message(message):
     affinite[user_id] += 1
     save()
 
-    await message.channel.send(reply)
+    await message.reply(reply, mention_author=False)
+    await bot.process_commands(message)
 
 bot.run(TOKEN)
