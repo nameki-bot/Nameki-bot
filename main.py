@@ -5,7 +5,9 @@ import asyncio
 import json
 import os
 from flask import Flask
-import threading
+from threading import Thread
+
+# -------------------- FLASK POUR RENDER --------------------
 
 app = Flask(__name__)
 
@@ -13,11 +15,16 @@ app = Flask(__name__)
 def home():
     return "Bot is alive!"
 
-def run_flask():
+def run():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-threading.Thread(target=run_flask, daemon=True).start()
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# -------------------- DISCORD --------------------
+
 TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
@@ -26,8 +33,6 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="?", intents=intents)
 
 DATA_FILE = "data.json"
-
-# -------------------- SAUVEGARDE --------------------
 
 def load():
     if os.path.exists(DATA_FILE):
@@ -43,7 +48,7 @@ data = load()
 affinite = data["affinite"]
 humeurs_users = data["humeurs"]
 
-# -------------------- HUMEURS --------------------
+# -------------------- 20 HUMEURS --------------------
 
 humeurs = {
 1:{"status":"💗 Amoureuse","phrases":["Tu es à moi 💞","Je t'adore tellement.","Reste encore un peu...","Je souris quand tu parles.","Tu me fais fondre.","Je veux rester avec toi."]},
@@ -70,8 +75,6 @@ humeurs = {
 
 INSULTES = ["tg", "ta gueule", "fdp", "connard", "pute"]
 
-# -------------------- SMART RESPONSE --------------------
-
 def smart_response(content):
     content = content.lower()
 
@@ -85,8 +88,6 @@ def smart_response(content):
         return random.choice(["Ça va et toi ?","Je vais bien.","Bof aujourd’hui."])
 
     return None
-
-# -------------------- EVENTS --------------------
 
 @bot.event
 async def on_ready():
@@ -127,5 +128,9 @@ async def on_message(message):
         allowed_mentions=discord.AllowedMentions(users=True)
     )
 
+    await bot.process_commands(message)
+
+# 🔥 ON OUVRE LE PORT POUR RENDER
+keep_alive()
 
 bot.run(TOKEN)
