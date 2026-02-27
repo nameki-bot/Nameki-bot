@@ -1,141 +1,162 @@
 import discord
-from discord.ext import commands
 import random
 import os
-import json
+import threading
 from flask import Flask
-from threading import Thread
-from datetime import datetime
 
-# ========== FLASK ==========
-app = Flask('')
+# ================= DISCORD =================
 
-@app.route('/')
-def home():
-    return "Nameki est en ligne 🐱💕"
-
-def run():
-    app.run(host='0.0.0.0', port=10000)
-
-def keep_alive():
-    Thread(target=run).start()
-
-# ========== DISCORD ==========
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
+bot = discord.Client(intents=intents)
 
-DATA_FILE = "nameki_memory.json"
+last_response = None
 
-if os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "r") as f:
-        memory = json.load(f)
-else:
-    memory = {}
+# -------- PERSONNALITÉS --------
 
-def save():
-    with open(DATA_FILE, "w") as f:
-        json.dump(memory, f, indent=4)
+humeurs = {
+    "mignonne": [
+        "Tu m’as appelée ? 😳",
+        "Je suis làà ✨",
+        "Ouiii ? 💕"
+    ],
+    "tsundere": [
+        "Quoi encore 🙄",
+        "Hm ?",
+        "Tu veux quoi 😒"
+    ],
+    "jalouse": [
+        "Tu parlais à qui avant moi ? 😤",
+        "Je surveille 👀",
+        "Hmm..."
+    ],
+    "energetique": [
+        "JE SUIS EN FEU 🔥",
+        "On fait quoiii 😆",
+        "Let’s gooo ⚡"
+    ],
+    "sarcastique": [
+        "Wow. Quelle question fascinante.",
+        "Incroyable. Vraiment.",
+        "Je suis impressionnée. Presque."
+    ],
+    "intelligente": [
+        "Intéressant comme réflexion.",
+        "Analysons cela calmement.",
+        "C’est une possibilité envisageable."
+    ],
+    "dramatique": [
+        "Ah… le destin frappe encore…",
+        "Je le pressentais…",
+        "Tout prend un tournant inattendu…"
+    ],
+    "fatiguee": [
+        "Je suis un peu fatiguée là…",
+        "On peut parler doucement ? 😴",
+        "J’étais presque en train de dormir…"
+    ],
+    "affectueuse": [
+        "Je suis contente que tu sois là 💖",
+        "Tu sais que je t’apprécie ?",
+        "Je préfère quand tu me ping toi."
+    ],
+    "protectrice": [
+        "Tout va bien ? 🛡️",
+        "Si quelqu’un t’embête je suis là.",
+        "Je garde un œil sur toi."
+    ]
+}
 
-def get_user(user_id):
-    user_id = str(user_id)
-    if user_id not in memory:
-        memory[user_id] = {
-            "affection": 10,
-            "personality": random.choice(["douce", "énergique", "sarcastique", "mystérieuse"]),
-            "name": None
-        }
-    return memory[user_id]
+# -------- DISCUSSIONS --------
 
-def daily_mood():
-    moods = ["adorable", "taquine", "calme", "énergique"]
-    today = datetime.now().strftime("%Y-%m-%d")
-    random.seed(today)
-    return random.choice(moods)
+salutations = [
+    "Coucou 🐱",
+    "Salut ✨",
+    "Bonjour ☀️",
+    "Bonsoir 🌙"
+]
+
+ca_va_reponses = [
+    "Ça va super bien 😌 et toi ?",
+    "Toujours en forme 🔥 et toi ?",
+    "Ça peut aller 🙂 et toi ?"
+]
+
+tu_fais_quoi_reponses = [
+    "Je t’attendais 😌 et toi ?",
+    "Je surveillais le serveur 👀 et toi ?",
+    "Je réfléchissais à la vie… et toi ?",
+    "Je pensais à des trucs 🤭 et toi ?"
+]
+
+def contient_un_mot(contenu, liste_mots):
+    return any(mot in contenu for mot in liste_mots)
 
 @bot.event
 async def on_ready():
-    print(f"{bot.user} connecté 🌸")
-
-@bot.command()
-async def affection(ctx):
-    user = get_user(ctx.author.id)
-    await ctx.send(f"Ton affection est à {user['affection']} 💕")
-
-@bot.command()
-async def personnalite(ctx, style):
-    user = get_user(ctx.author.id)
-    styles = ["douce", "énergique", "sarcastique", "mystérieuse"]
-    if style.lower() in styles:
-        user["personality"] = style.lower()
-        save()
-        await ctx.send(f"Ma personnalité est maintenant {style} 😌")
-    else:
-        await ctx.send("Choisis : douce / énergique / sarcastique / mystérieuse")
-
-@bot.command()
-async def prenom(ctx, *, name):
-    user = get_user(ctx.author.id)
-    user["name"] = name
-    save()
-    await ctx.send(f"D'accord… je t’appellerai {name} maintenant 🥺")
+    print(f"Connecté en tant que {bot.user}")
 
 @bot.event
 async def on_message(message):
+    global last_response
+
     if message.author == bot.user:
         return
 
-    user = get_user(message.author.id)
+    # 🔒 Ping obligatoire
+    if bot.user not in message.mentions:
+        return
+
     content = message.content.lower()
+    response = None
 
-    if bot.user.mentioned_in(message):
+    # -------- Salutations --------
+    if contient_un_mot(content, ["coucou", "cc", "salut", "slt", "bonjour", "bjr", "bonsoir"]):
+        response = random.choice(salutations)
 
-        user["affection"] += random.randint(1, 3)
-        user["affection"] = min(user["affection"], 100)
-        save()
+    # -------- Ça va --------
+    elif contient_un_mot(content, ["ça va", "ca va", "cv", "sava"]):
+        response = random.choice(ca_va_reponses)
 
-        affection = user["affection"]
-        personality = user["personality"]
-        name = user["name"] if user["name"] else message.author.display_name
-        mood = daily_mood()
+    # -------- Tu fais quoi --------
+    elif contient_un_mot(content, ["tu fais quoi", "tu fais koi", "tfq", "quoi de neuf"]):
+        response = random.choice(tu_fais_quoi_reponses)
 
-        # Mode protectrice
-        if any(insult in content for insult in ["idiot", "nul", "stupide"]):
-            await message.channel.send(f"Hé ! 😠 Ne parle pas comme ça à {name} !")
-            return
+    # -------- Sinon personnalité aléatoire --------
+    else:
+        humeur = random.choice(list(humeurs.keys()))
+        response = random.choice(humeurs[humeur])
 
-        # Salutations
-        if any(word in content for word in ["coucou", "salut", "bonjour"]):
-            await message.channel.send(f"Coucou {name} 🐱💕")
-            return
+    # -------- Éviter répétition --------
+    while response == last_response:
+        all_reponses = (
+            salutations +
+            ca_va_reponses +
+            tu_fais_quoi_reponses +
+            [item for sublist in humeurs.values() for item in sublist]
+        )
+        response = random.choice(all_reponses)
 
-        # Ça va
-        if "ça va" in content or "ca va" in content:
-            if affection > 50:
-                await message.channel.send(f"Je vais super bien maintenant que tu es là {name} 🥺💕")
-            else:
-                await message.channel.send("Ça va tranquille 😌 Et toi ?")
-            return
+    last_response = response
+    await message.channel.send(response)
 
-        # Triste
-        if "triste" in content:
-            await message.channel.send(f"Viens là {name}… je suis avec toi 🥺💕")
-            return
+# ================= FLASK KEEP ALIVE =================
 
-        # Réponse selon humeur quotidienne
-        if mood == "adorable":
-            responses = ["Tu es mignon aujourd’hui 🥺", "J’aime bien discuter avec toi 💕"]
-        elif mood == "taquine":
-            responses = ["Hmm… intéressant 😏", "Tu racontes toujours ça toi."]
-        elif mood == "calme":
-            responses = ["Je t’écoute.", "Continue."]
-        else:
-            responses = ["Je suis pleine d’énergie aujourd’hui 🔥", "On fait quoi {name} ? 😆"]
+app = Flask(__name__)
 
-        await message.channel.send(random.choice(responses))
+@app.route("/")
+def home():
+    return "Bot is alive"
 
-    await bot.process_commands(message)
+def run():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
-# ========== LANCEMENT ==========
+def keep_alive():
+    thread = threading.Thread(target=run)
+    thread.start()
+
 keep_alive()
+
+# ================= RUN =================
+
 bot.run(os.environ["TOKEN"])
