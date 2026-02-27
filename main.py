@@ -4,6 +4,7 @@ import random
 import time
 import json
 import os
+import asyncio
 from flask import Flask
 from threading import Thread
 
@@ -29,7 +30,7 @@ def run_web():
 Thread(target=run_web).start()
 
 # ==========================
-# MEMOIRE + HUMEUR PERSISTANTE
+# MEMOIRE PERSISTANTE
 # ==========================
 
 MEMORY_FILE = "memory.json"
@@ -47,7 +48,7 @@ else:
 memory = data["users"]
 humeur_actuelle = data["humeur"]
 dernier_changement = data["last_change"]
-last_response = None
+last_response_time = {}
 
 def save_all():
     with open(MEMORY_FILE, "w") as f:
@@ -64,43 +65,23 @@ def save_all():
 humeurs = {
     "mignonne": {
         "status": "Mode mignonne 🥺",
-        "ping": ["Ouiii ? 🥺", "Je suis là 🫶"],
-        "salut": ["Coucou ✨", "Salut toi 🐱"],
-        "ca_va": ["Ça va super bien 🥰 et toi ?"],
-        "tu_fais_quoi": ["Je pensais à toi 🥺 et toi ?"],
-        "default": ["Je suis là si tu veux parler 💕"]
+        "base": ["Ouiii ? 💕", "Tu m’as appelée ?", "Je suis là pour toi 💗"]
     },
     "energetique": {
         "status": "Énergie max 🔥",
-        "ping": ["OUI 🔥", "Je suis prête ⚡"],
-        "salut": ["SALUT 🔥"],
-        "ca_va": ["Toujours en forme 🔥 et toi ?"],
-        "tu_fais_quoi": ["Je cherche un truc fun 😆 et toi ?"],
-        "default": ["On fait quoi ? 😏"]
+        "base": ["OUI 🔥", "Toujours prête ⚡", "On fait quoi ?"]
     },
     "affectueuse": {
         "status": "Besoin de câlins 💕",
-        "ping": ["Oui toi ? 💕"],
-        "salut": ["Coucou toi 💖"],
-        "ca_va": ["Ça va mieux quand tu parles 💕 et toi ?"],
-        "tu_fais_quoi": ["Je pensais à toi 💭 et toi ?"],
-        "default": ["Je suis contente que tu sois là 🫶"]
+        "base": ["Je suis là 🤍", "Tu avais besoin de moi ?", "Je t’écoute."]
     },
     "tsundere": {
         "status": "Hm.",
-        "ping": ["Quoi encore ?"],
-        "salut": ["Salut."],
-        "ca_va": ["Ça va. Et toi ?"],
-        "tu_fais_quoi": ["Rien… et toi ?"],
-        "default": ["Tu veux quoi ?"]
+        "base": ["Quoi encore.", "Hm ?", "Tu veux quoi ?"]
     },
     "protectrice": {
         "status": "Je veille 👀",
-        "ping": ["Oui ?"],
-        "salut": ["Salut. Je veille."],
-        "ca_va": ["Si ça ne va pas je suis là. Et toi ?"],
-        "tu_fais_quoi": ["Je surveille le serveur. Et toi ?"],
-        "default": ["Je suis là si besoin."]
+        "base": ["Oui ?", "Je suis là si besoin.", "Tout va bien ?"]
     }
 }
 
@@ -127,20 +108,53 @@ async def update_status():
     )
 
 # ==========================
-# DETECTION MESSAGE
+# DETECTION INSULTE
 # ==========================
 
-def detect_type(message):
+def detect_insulte(message):
+    insultes = ["nulle","idiote","tg","tais toi","folle","ferme","stupide"]
     msg = message.lower()
+    return any(word in msg for word in insultes)
 
-    if any(word in msg for word in ["coucou","salut","bonjour","bonsoir"]):
-        return "salut"
-    if "ça va" in msg or "ca va" in msg:
-        return "ca_va"
-    if "tu fais quoi" in msg:
-        return "tu_fais_quoi"
+# ==========================
+# REPONSE HUMAINE
+# ==========================
 
-    return "default"
+async def repondre(message, user_data):
+
+    # réflexion humaine
+    base_delay = random.uniform(2.0, 4.0)
+    extra_delay = min(len(message.content) * 0.04, 2)
+    total_delay = base_delay + extra_delay
+
+    async with message.channel.typing():
+        await asyncio.sleep(total_delay)
+
+    base = random.choice(humeurs[humeur_actuelle]["base"])
+    affinite = user_data["affinite"]
+    emotion = user_data["emotion"]
+
+    # Variation selon affinité
+    if affinite < 20:
+        reponse = "..."
+    elif affinite < 40:
+        reponse = base.replace("💕","").replace("💗","").replace("🤍","")
+    elif affinite > 80:
+        reponse = base + " 🥰"
+    else:
+        reponse = base
+
+    # Si insulte récente → froide
+    if emotion == "froide":
+        reponse = "Hm. " + reponse
+
+    # Hésitation réaliste
+    if random.random() < 0.25:
+        msg = await message.channel.send("...")
+        await asyncio.sleep(random.uniform(1.0,1.8))
+        await msg.edit(content=reponse)
+    else:
+        await message.channel.send(reponse)
 
 # ==========================
 # EVENTS
@@ -153,12 +167,11 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    global last_response
 
-    if message.author == bot.user:
+    if message.author.bot:
         return
 
-    # 🔒 PING OBLIGATOIRE
+    # PING OBLIGATOIRE
     if bot.user not in message.mentions:
         return
 
@@ -168,29 +181,40 @@ async def on_message(message):
     username = message.author.display_name
 
     if user_id not in memory:
-        memory[user_id] = {"name": username, "last": ""}
+        memory[user_id] = {
+            "name": username,
+            "last": "",
+            "affinite": 50,
+            "emotion": "neutre"
+        }
 
-    mood = humeurs[humeur_actuelle]
+    user_data = memory[user_id]
 
     content = message.content.replace(f"<@{bot.user.id}>","").replace(f"<@!{bot.user.id}>","").strip()
 
-    if content == "":
-        response = random.choice(mood["ping"])
+    # Anti spam 5 sec
+    now = time.time()
+    if user_id in last_response_time:
+        if now - last_response_time[user_id] < 5:
+            return
+    last_response_time[user_id] = now
+
+    # Gestion émotionnelle
+    if detect_insulte(content):
+        user_data["affinite"] -= 15
+        user_data["emotion"] = "froide"
     else:
-        msg_type = detect_type(content)
-        response = random.choice(mood.get(msg_type, mood["default"]))
+        user_data["affinite"] += 2
+        user_data["emotion"] = "gentille"
 
-    if response == last_response:
-        response = random.choice(mood["default"])
+    user_data["affinite"] = max(0, min(100, user_data["affinite"]))
 
-    memory[user_id]["last"] = content
-    last_response = response
+    await repondre(message, user_data)
+
     save_all()
 
-    await message.channel.send(response)
-
 # ==========================
-# AUTO-RESTART EN CAS DE CRASH
+# AUTO RESTART
 # ==========================
 
 while True:
