@@ -123,10 +123,7 @@ async def on_message(message):
     affinite[user_id] += 1
     save()
 
-    await message.channel.send(
-        f"{message.author.mention} {reply}",
-        allowed_mentions=discord.AllowedMentions(users=True)
-    )
+    await message.reply(reply, mention_author=True)
 
     await bot.process_commands(message)
 
