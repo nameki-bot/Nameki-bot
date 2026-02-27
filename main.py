@@ -80,7 +80,7 @@ async def on_message(message):
     if contient(content, ["coucou", "cc", "salut", "bonjour", "bonsoir"]):
         response = random.choice(["Coucou 🐱", "Salut ✨", "Bonjour ☀️", "Bonsoir 🌙"])
 
-    elif contient(content, ["ça va", "ca va", "cv", "sava"]):
+    elif contient(content, ["ça va", "ca va", "cv", "sava", " tu vas bien ?"]):
         response = random.choice(mood["ca_va"])
 
     elif contient(content, ["tu fais quoi", "tfq", "quoi de neuf"]):
