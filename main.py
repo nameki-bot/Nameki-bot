@@ -98,13 +98,15 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    if bot.user not in message.mentions:
+    # Vérifie que le bot est mentionné
+    if not message.mentions or bot.user.id not in [u.id for u in message.mentions]:
         return
 
     user_id = str(message.author.id)
 
     # Nettoyage mention
-    content = message.content.replace(f"<@{bot.user.id}>", "")
+    content = message.content
+    content = content.replace(f"<@{bot.user.id}>", "")
     content = content.replace(f"<@!{bot.user.id}>", "")
     content = content.strip()
 
@@ -117,22 +119,20 @@ async def on_message(message):
     humeur = humeurs_users[user_id]
 
     async with message.channel.typing():
-        await asyncio.sleep(random.uniform(1.5, 3))
+        await asyncio.sleep(random.uniform(1.2, 2.5))
 
     reply = smart_response(content)
 
-    if not reply:
+    if reply is None:
         reply = random.choice(humeurs[humeur]["phrases"])
 
-    # ✅ UNE SEULE incrémentation
     affinite[user_id] += 1
     save()
 
-    # ✅ Réponse liée au message sans ping
+    # 🔥 Réponse attachée au message (ping du message mais pas du membre)
     await message.reply(
         reply,
-        mention_author=False,
-        allowed_mentions=discord.AllowedMentions.none()
+        mention_author=False
     )
 
     return
