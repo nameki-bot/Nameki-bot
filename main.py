@@ -103,9 +103,8 @@ async def on_message(message):
 
     user_id = str(message.author.id)
 
-    # Nettoyage mention (marche pour toutes formes)
-    content = message.content
-    content = content.replace(f"<@{bot.user.id}>", "")
+    # Nettoyage mention
+    content = message.content.replace(f"<@{bot.user.id}>", "")
     content = content.replace(f"<@!{bot.user.id}>", "")
     content = content.strip()
 
@@ -125,17 +124,18 @@ async def on_message(message):
     if not reply:
         reply = random.choice(humeurs[humeur]["phrases"])
 
+    # ✅ UNE SEULE incrémentation
     affinite[user_id] += 1
     save()
 
-    # ✅ Vraie réponse liée au message
+    # ✅ Réponse liée au message sans ping
     await message.reply(
         reply,
         mention_author=False,
-        allowed_mentions=discord.AllowedMentions(replied_user=False)
+        allowed_mentions=discord.AllowedMentions.none()
     )
 
-    await bot.process_commands(message)
+    return
 
 # 🔥 ON OUVRE LE PORT POUR RENDER
 keep_alive()
