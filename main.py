@@ -12,7 +12,7 @@ TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="?", intents=intents)
 
 # ================= WEB SERVER (ANTI-SLEEP) =================
 
@@ -56,90 +56,54 @@ def save():
 # ================= 20 HUMEURS =================
 
 humeurs = {
-1:{"status":"💗 Amoureuse","phrases":["Tu es à moi 💞","Je t'adore...","Reste encore un peu.","Je souris quand tu parles."]},
-2:{"status":"😈 Dominante","phrases":["Obéis.","Approche.","Ne discute pas.","Regarde-moi."]},
-3:{"status":"🥰 Adorable","phrases":["Ouuuiii ? 💕","Je suis làaa~","Dis-moi tout~","Hehe~"]},
-4:{"status":"🔥 Jalouse","phrases":["C'était qui ça ?","Explique-moi.","Je surveille.","Reste avec moi."]},
-5:{"status":"😴 Fatiguée","phrases":["Je suis crevée...","Mmmh...","Je vais m'allonger...","Je manque de sommeil..."]},
-6:{"status":"⚡ Énergique","phrases":["Let's go !","Je suis à fond !","On fait quoi ??","Ça bouge !!"]},
-7:{"status":"🧠 Intelligente","phrases":["Analyse en cours...","Intéressant.","Argument valide.","Je réfléchis."]},
-8:{"status":"🧊 Froide","phrases":["Ok.","Si tu veux.","Hum.","Peu importe."]},
-9:{"status":"🌸 Timide","phrases":["Euh... salut...","Je ne sais pas...","Je suis gênée...","D'accord..."]},
-10:{"status":"👑 Protectrice","phrases":["Je veille sur toi.","Je suis là.","Je te protège.","Compte sur moi."]},
-11:{"status":"😼 Taquine","phrases":["T'es nul 😏","Je rigole~","Tu es mignon.","Haha."]},
-12:{"status":"💀 Sombre","phrases":["Silence.","Les ombres observent.","Rien n'est éternel.","Le temps efface tout."]},
-13:{"status":"🤖 Logique","phrases":["Calcul terminé.","Conclusion validée.","Erreur détectée.","Analyse froide."]},
-14:{"status":"🎭 Instable","phrases":["HAHA 😆","Je change d'avis.","Peut-être.","Je suis imprévisible."]},
-15:{"status":"💢 Susceptible","phrases":["Fais attention.","Répète ça.","Ne me provoque pas.","Je suis sensible aujourd’hui."]},
-16:{"status":"🌙 Mystérieuse","phrases":["Peut-être...","Un jour tu sauras.","Je garde un secret.","Rien n'est hasard."]},
-17:{"status":"🫶 Affectueuse","phrases":["Viens là 💞","Câlin ?","Tu es spécial 💕","Je suis douce aujourd’hui 💗"]},
-18:{"status":"🧨 Explosive","phrases":["ARRÊTE 😡","Ça suffit !","Je vais exploser !","Stop maintenant !"]},
-19:{"status":"🎀 Collante","phrases":["Ne pars pas.","Reste avec moi.","Je pensais à toi.","Je suis attachée à toi."]},
-20:{"status":"🧘 Calme","phrases":["Respire.","Tout va bien.","Je suis sereine.","On garde le calme."]}
+1:{"status":"💗 Amoureuse","phrases":["Tu es à moi 💞","Je t'adore tellement.","Reste encore un peu...","Je souris quand tu parles.","Tu me fais fondre.","Je veux rester avec toi."]},
+2:{"status":"😈 Dominante","phrases":["Obéis.","Approche.","Ne discute pas.","Regarde-moi quand je parle.","Tu m’écoutes.","Intéressant... continue."]},
+3:{"status":"🥰 Adorable","phrases":["Ouuuiii ? 💕","Je suis làaa~","Dis-moi tout~","Hehe~","Je suis contente~","Tu es trop chou."]},
+4:{"status":"🔥 Jalouse","phrases":["C'était qui ça ?","Explique-moi.","Je surveille.","Reste avec moi.","Je n’aime pas ça.","Tu me caches quelque chose ?"]},
+5:{"status":"😴 Fatiguée","phrases":["Je suis crevée...","Mmmh...","Je vais m'allonger...","Je manque de sommeil...","Je parle doucement aujourd’hui..."]},
+6:{"status":"⚡ Énergique","phrases":["Let's go !","Je suis à fond !","On fait quoi ??","Ça bouge !!","J’ai trop d’énergie !"]},
+7:{"status":"🧠 Intelligente","phrases":["Analyse en cours...","Intéressant.","Argument valide.","Je réfléchis.","Logique détectée."]},
+8:{"status":"🧊 Froide","phrases":["Ok.","Si tu veux.","Hum.","Peu importe.","Fais comme tu veux."]},
+9:{"status":"🌸 Timide","phrases":["Euh... salut...","Je ne sais pas trop...","Je suis gênée...","D'accord...","Tu me mets un peu mal à l’aise..."]},
+10:{"status":"👑 Protectrice","phrases":["Je veille sur toi.","Je suis là.","Je te protège.","Compte sur moi.","Personne ne te touche."]},
+11:{"status":"😼 Taquine","phrases":["T'es nul 😏","Je rigole~","Tu es mignon.","Haha.","Je me moque un peu."]},
+12:{"status":"💀 Sombre","phrases":["Silence.","Les ombres observent.","Rien n'est éternel.","Le temps efface tout.","Tout finit un jour."]},
+13:{"status":"🤖 Logique","phrases":["Calcul terminé.","Conclusion validée.","Erreur détectée.","Analyse froide.","Donnée enregistrée."]},
+14:{"status":"🎭 Instable","phrases":["HAHA 😆","Je change d'avis.","Peut-être.","Je suis imprévisible.","Tout peut changer."]},
+15:{"status":"💢 Susceptible","phrases":["Fais attention.","Répète ça.","Ne me provoque pas.","Je suis sensible aujourd’hui.","Je n’aime pas ton ton."]},
+16:{"status":"🌙 Mystérieuse","phrases":["Peut-être...","Un jour tu sauras.","Je garde un secret.","Rien n'est hasard.","Tout est lié."]},
+17:{"status":"🫶 Affectueuse","phrases":["Viens là 💞","Câlin ?","Tu es spécial 💕","Je suis douce aujourd’hui 💗","Je t’apprécie beaucoup."]},
+18:{"status":"🧨 Explosive","phrases":["ARRÊTE 😡","Ça suffit !","Je vais exploser !","Stop maintenant !","Tu m’énerves."]},
+19:{"status":"🎀 Collante","phrases":["Ne pars pas.","Reste avec moi.","Je pensais à toi.","Je suis attachée à toi.","Parle-moi encore."]},
+20:{"status":"🧘 Calme","phrases":["Respire.","Tout va bien.","Je suis sereine.","On garde le calme.","Restons tranquilles."]}
 }
 
 # ================= SMART RESPONSE =================
 
-last_response = ""
-
 def smart_response(content, humeur_id):
 
-    global last_response
     content = content.lower()
 
     saluts = ["coucou","cc","salut","bonjour","bonsoir","hey","yo"]
     cava = ["ça va","ca va","cv","tu vas bien","comment tu vas"]
-
-    humeur_map = {
-        "joyeuse":[1,3,6,17],
-        "froide":[8,13,20],
-        "taquine":[11,14],
-        "triste":[5,12,15]
-    }
-
-    humeur_type = "joyeuse"
-
-    for k,v in humeur_map.items():
-        if humeur_id in v:
-            humeur_type = k
-
-    moods = {
-        "joyeuse":{
-            "salut":["Hey 💚","Coucou ✨","Hellooo~"],
-            "cava":["Toujours 💚 et toi ?","Super humeur ✨ et toi ?"],
-            "normal":["Intéressant 👀","Continue je t’écoute~"]
-        },
-        "froide":{
-            "salut":["Oui ?","Hm.","Salut."],
-            "cava":["Ça dépend.","Bof.","Pourquoi ?"],
-            "normal":["Mouais.","Ok."]
-        },
-        "taquine":{
-            "salut":["Tu me cherches ? 😏","Encore toi ?"],
-            "cava":["Peut-être bien.","Et si je dis non ?"],
-            "normal":["Hmm...","Intéressant 😏"]
-        },
-        "triste":{
-            "salut":["Oh… salut.","Hey."],
-            "cava":["Bof aujourd’hui…","Ça ira."],
-            "normal":["Je vois.","Peut-être."]
-        }
-    }
-
-    response_type = "normal"
+    quoi = ["tu fais quoi","tu fais","quoi de neuf"]
 
     if any(w in content for w in saluts):
-        response_type = "salut"
-    elif any(w in content for w in cava):
-        response_type = "cava"
+        return random.choice(["Coucou 💚","Salut.","Hey toi.","Bonjour~"])
 
-    response = random.choice(moods[humeur_type][response_type])
+    if any(w in content for w in cava):
+        return random.choice(humeurs[humeur_id]["phrases"]) + " Et toi ?"
 
-    while response == last_response:
-        response = random.choice(moods[humeur_type][response_type])
+    if any(w in content for w in quoi):
+        return random.choice([
+            "Je réfléchis un peu.",
+            "Je t’observe.",
+            "Je change d’humeur peut-être.",
+            "Je traîne ici.",
+            "Je regarde les messages."
+        ]) + " Et toi ?"
 
-    last_response = response
-    return response
+    return None
 
 # ================= MOOD LOOP =================
 
@@ -166,6 +130,7 @@ async def on_message(message):
         return
 
     if bot.user not in message.mentions:
+        await bot.process_commands(message)
         return
 
     content = message.content.lower()
@@ -194,16 +159,8 @@ async def on_message(message):
     if humeur in [8,13,16,20] and random.random() < 0.3:
         return
 
-    # Temps d'écriture variable selon humeur
-    if humeur in [1,3,17]:
-        delay = random.uniform(2.5,4.5)
-    elif humeur in [8,13]:
-        delay = random.uniform(1.5,3)
-    else:
-        delay = random.uniform(2,4)
-
     async with message.channel.typing():
-        await asyncio.sleep(delay)
+        await asyncio.sleep(random.uniform(2,4))
 
     reply = smart_response(content, humeur)
 
