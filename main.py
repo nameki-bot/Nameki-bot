@@ -59,7 +59,7 @@ INSULTES = ["tg", "ta gueule", "fdp", "connard", "pute"]
 
 # -------------------- SMART RESPONSE --------------------
 
-def smart_response(content, humeur):
+def smart_response(content):
     content = content.lower()
 
     if any(i in content for i in INSULTES):
@@ -85,7 +85,6 @@ async def on_message(message):
         return
 
     if bot.user not in message.mentions:
-        await bot.process_commands(message)
         return
 
     user_id = str(message.author.id)
@@ -99,18 +98,10 @@ async def on_message(message):
 
     humeur = humeurs_users[user_id]
 
-    if affinite[user_id] > 5:
-        humeur = random.choice([1,17,19])
-    elif affinite[user_id] < -3:
-        humeur = random.choice([8,12,15,18])
-
-    if humeur in [8,13,16,20] and random.random() < 0.3:
-        return
-
     async with message.channel.typing():
         await asyncio.sleep(random.uniform(1.5, 3))
 
-    reply = smart_response(content, humeur)
+    reply = smart_response(content)
 
     if not reply:
         reply = random.choice(humeurs[humeur]["phrases"])
@@ -122,7 +113,5 @@ async def on_message(message):
         f"{message.author.mention} {reply}",
         allowed_mentions=discord.AllowedMentions(users=True)
     )
-
-    await bot.process_commands(message)
 
 bot.run(TOKEN)
