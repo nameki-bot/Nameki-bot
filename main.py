@@ -102,7 +102,12 @@ async def on_message(message):
         return
 
     user_id = str(message.author.id)
-    content = message.content.replace(f"<@{bot.user.id}>", "").strip()
+
+    # Nettoyage mention (marche pour toutes formes)
+    content = message.content
+    content = content.replace(f"<@{bot.user.id}>", "")
+    content = content.replace(f"<@!{bot.user.id}>", "")
+    content = content.strip()
 
     if user_id not in affinite:
         affinite[user_id] = 0
@@ -123,7 +128,12 @@ async def on_message(message):
     affinite[user_id] += 1
     save()
 
- await message.reply(reply, mention_author=False)
+    # ✅ Vraie réponse liée au message
+    await message.reply(
+        reply,
+        mention_author=False,
+        allowed_mentions=discord.AllowedMentions(replied_user=False)
+    )
 
     await bot.process_commands(message)
 
