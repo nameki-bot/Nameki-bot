@@ -2,6 +2,7 @@ import discord
 import random
 import os
 import threading
+import time
 from flask import Flask
 
 # ================= DISCORD =================
@@ -15,82 +16,47 @@ last_response = None
 # -------- PERSONNALITÉS --------
 
 humeurs = {
-    "mignonne": [
-        "Tu m’as appelée ? 😳",
-        "Je suis làà ✨",
-        "Ouiii ? 💕"
-    ],
-    "tsundere": [
-        "Quoi encore 🙄",
-        "Hm ?",
-        "Tu veux quoi 😒"
-    ],
-    "jalouse": [
-        "Tu parlais à qui avant moi ? 😤",
-        "Je surveille 👀",
-        "Hmm..."
-    ],
-    "energetique": [
-        "JE SUIS EN FEU 🔥",
-        "On fait quoiii 😆",
-        "Let’s gooo ⚡"
-    ],
-    "sarcastique": [
-        "Wow. Quelle question fascinante.",
-        "Incroyable. Vraiment.",
-        "Je suis impressionnée. Presque."
-    ],
-    "intelligente": [
-        "Intéressant comme réflexion.",
-        "Analysons cela calmement.",
-        "C’est une possibilité envisageable."
-    ],
-    "dramatique": [
-        "Ah… le destin frappe encore…",
-        "Je le pressentais…",
-        "Tout prend un tournant inattendu…"
-    ],
-    "fatiguee": [
-        "Je suis un peu fatiguée là…",
-        "On peut parler doucement ? 😴",
-        "J’étais presque en train de dormir…"
-    ],
-    "affectueuse": [
-        "Je suis contente que tu sois là 💖",
-        "Tu sais que je t’apprécie ?",
-        "Je préfère quand tu me ping toi."
-    ],
-    "protectrice": [
-        "Tout va bien ? 🛡️",
-        "Si quelqu’un t’embête je suis là.",
-        "Je garde un œil sur toi."
-    ]
+    "mignonne": {
+        "default": ["Ouiii ? 💕", "Je suis làà ✨", "Tu m’as appelée ? 😳"],
+        "ca_va": ["Ça va super bien 😌 et toi ?"],
+        "tu_fais_quoi": ["Je t’attendais 😌 et toi ?"]
+    },
+    "tsundere": {
+        "default": ["Quoi encore 🙄", "Hm ?", "Tu veux quoi 😒"],
+        "ca_va": ["Ça va. Voilà. et toi ?"],
+        "tu_fais_quoi": ["Rien qui te regarde… et toi ?"]
+    },
+    "protectrice": {
+        "default": ["Je veille 👀", "Tout va bien ? 🛡️"],
+        "ca_va": ["Si ça va pas je suis là. Et toi ?"],
+        "tu_fais_quoi": ["Je surveille le serveur. Et toi ?"]
+    },
+    "energetique": {
+        "default": ["ON BOUGE 🔥", "Let’s gooo ⚡"],
+        "ca_va": ["Toujours en forme 🔥 et toi ?"],
+        "tu_fais_quoi": ["Je cherche de l’action 😆 et toi ?"]
+    },
+    "affectueuse": {
+        "default": ["Je suis contente que tu sois là 💖"],
+        "ca_va": ["Ça va encore mieux quand tu parles 😌 et toi ?"],
+        "tu_fais_quoi": ["Je pensais un peu à toi… et toi ?"]
+    }
 }
 
-# -------- DISCUSSIONS --------
+# -------- Humeur stable 10 min --------
 
-salutations = [
-    "Coucou 🐱",
-    "Salut ✨",
-    "Bonjour ☀️",
-    "Bonsoir 🌙"
-]
+humeur_actuelle = random.choice(list(humeurs.keys()))
+dernier_changement = time.time()
+DUREE_HUMEUR = 600  # 10 minutes
 
-ca_va_reponses = [
-    "Ça va super bien 😌 et toi ?",
-    "Toujours en forme 🔥 et toi ?",
-    "Ça peut aller 🙂 et toi ?"
-]
+def update_humeur():
+    global humeur_actuelle, dernier_changement
+    if time.time() - dernier_changement > DUREE_HUMEUR:
+        humeur_actuelle = random.choice(list(humeurs.keys()))
+        dernier_changement = time.time()
 
-tu_fais_quoi_reponses = [
-    "Je t’attendais 😌 et toi ?",
-    "Je surveillais le serveur 👀 et toi ?",
-    "Je réfléchissais à la vie… et toi ?",
-    "Je pensais à des trucs 🤭 et toi ?"
-]
-
-def contient_un_mot(contenu, liste_mots):
-    return any(mot in contenu for mot in liste_mots)
+def contient(contenu, mots):
+    return any(mot in contenu for mot in mots)
 
 @bot.event
 async def on_ready():
@@ -103,39 +69,28 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # 🔒 Ping obligatoire
     if bot.user not in message.mentions:
         return
 
+    update_humeur()
     content = message.content.lower()
-    response = None
 
-    # -------- Salutations --------
-    if contient_un_mot(content, ["coucou", "cc", "salut", "slt", "bonjour", "bjr", "bonsoir"]):
-        response = random.choice(salutations)
+    mood = humeurs[humeur_actuelle]
 
-    # -------- Ça va --------
-    elif contient_un_mot(content, ["ça va", "ca va", "cv", "sava"]):
-        response = random.choice(ca_va_reponses)
+    if contient(content, ["coucou", "cc", "salut", "bonjour", "bonsoir"]):
+        response = random.choice(["Coucou 🐱", "Salut ✨", "Bonjour ☀️", "Bonsoir 🌙"])
 
-    # -------- Tu fais quoi --------
-    elif contient_un_mot(content, ["tu fais quoi", "tu fais koi", "tfq", "quoi de neuf"]):
-        response = random.choice(tu_fais_quoi_reponses)
+    elif contient(content, ["ça va", "ca va", "cv", "sava"]):
+        response = random.choice(mood["ca_va"])
 
-    # -------- Sinon personnalité aléatoire --------
+    elif contient(content, ["tu fais quoi", "tfq", "quoi de neuf"]):
+        response = random.choice(mood["tu_fais_quoi"])
+
     else:
-        humeur = random.choice(list(humeurs.keys()))
-        response = random.choice(humeurs[humeur])
+        response = random.choice(mood["default"])
 
-    # -------- Éviter répétition --------
-    while response == last_response:
-        all_reponses = (
-            salutations +
-            ca_va_reponses +
-            tu_fais_quoi_reponses +
-            [item for sublist in humeurs.values() for item in sublist]
-        )
-        response = random.choice(all_reponses)
+    if response == last_response:
+        response = random.choice(mood["default"])
 
     last_response = response
     await message.channel.send(response)
